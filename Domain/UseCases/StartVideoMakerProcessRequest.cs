@@ -46,15 +46,15 @@ namespace Domain.UseCases
             if (video is null)
                 throw new ArgumentException("Video not found");
             
-            await videoService.UpdateStatus(request.VideoId, (int)VIDEO_STATUS.STARTED);
+            await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.STARTED);
 
             //Title
             var phraseTitleModel = configuration.GetSection("Phrases:Title").Value!;
             var phraseTitle = phraseTitleModel.Replace("@theme", video.Theme);
 
-            await videoService.UpdateStatus(request.VideoId, (int)VIDEO_STATUS.CREATING_TITLE);
+            await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.CREATING_TITLE);
             var title = await textService.GenerateTitle(phraseTitle);
-            title = title.Trim();
+            title = title.Trim().Replace("\"","");
 
             if (string.IsNullOrEmpty(title))
                 throw new ArgumentException("Invalid title");
@@ -66,9 +66,9 @@ namespace Domain.UseCases
             var phraseTextModel = configuration.GetSection("Phrases:Text").Value!;
             var phraseText = phraseTextModel.Replace("@title", title);
 
-            await videoService.UpdateStatus(request.VideoId, (int)VIDEO_STATUS.CREATING_TEXT);
+            await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.CREATING_TEXT);
             var text = await textService.GenerateText(phraseText);
-            text = text.Trim();
+            text = text.Trim().Replace("\"", ""); ;
 
             if (string.IsNullOrEmpty(text))
                 throw new ArgumentException("Invalid text");
@@ -76,9 +76,14 @@ namespace Domain.UseCases
             await videoService.UpdateText(request.VideoId, text);
             //Text
 
+            //Generate voice file
+            //Generate Music file
+            //Generate Video file
+            //Edit video with voice, music and video
+
             //Post to Upload queue
             await messageQueue.PostUploadQueue(request.VideoId);
-            await videoService.UpdateStatus(request.VideoId, (int)VIDEO_STATUS.READY_TO_UPLOAD);
+            await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.READY_TO_UPLOAD);
 
             return new StartVideoMakerProcessResponse
             {

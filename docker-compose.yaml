@@ -1,0 +1,42 @@
+version: '3.1'
+
+services:
+
+  iatuberdb:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    restart: always
+    environment:
+      MYSQL_DATABASE: iatuber
+      MYSQL_USER: user
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - c:\iatuber\db:/var/lib/mysql
+    ports:
+      - "33061:3306"
+    networks:
+      - iatuber
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    hostname: "rabbitmq"
+    labels:
+      NAME: "rabbitmq"
+    ports:
+    - "4369:4369"
+    - "5671:5671"
+    - "5672:5672"
+    - "25672:25672"
+    - "15671:15671"
+    - "15672:15672"
+    volumes:
+      - c:\iatuber\rabbit\data:/var/lib/rabbitmq/
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+networks:
+  iatuber:
+    driver: bridge
