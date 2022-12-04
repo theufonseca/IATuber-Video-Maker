@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infra.ExternalServices
+namespace Infra.ExternalServices.TextService.TextGenerator
 {
     public class CompletionsResponse
     {

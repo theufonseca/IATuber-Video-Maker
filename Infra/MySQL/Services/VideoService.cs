@@ -87,5 +87,20 @@ namespace Infra.MySQL.Services
 
             await dataContext.SaveChangesAsync();
         }
+
+        public async Task UpdateVoiceFile(int videoId, string fileName)
+        {
+            using var dataContext = serviceScopeFactory.CreateScope()
+                .ServiceProvider.GetRequiredService<DataContext>();
+
+            var video = await dataContext.Video.FirstOrDefaultAsync(x => x.Id == videoId);
+            if (video == null)
+                throw new ArgumentException("Video not found");
+
+            video.VoiceFileName = fileName;
+            dataContext.Video.Update(video);
+
+            await dataContext.SaveChangesAsync();
+        }
     }
 }

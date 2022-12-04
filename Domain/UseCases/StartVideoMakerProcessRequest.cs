@@ -26,14 +26,17 @@ namespace Domain.UseCases
         private readonly ITextService textService;
         private readonly IMessageQueue messageQueue;
         private readonly IConfiguration configuration;
+        private readonly IVoiceService voiceService;
 
         public StartVideoMakerProcessRequestHandler(IVideoService videoService,
-            ITextService textService, IMessageQueue messageQueue, IConfiguration configuration)
+            ITextService textService, IMessageQueue messageQueue, IConfiguration configuration,
+            IVoiceService voiceService)
         {
             this.videoService = videoService;
             this.textService = textService;
             this.messageQueue = messageQueue;
             this.configuration = configuration;
+            this.voiceService = voiceService;
         }
 
         public async Task<StartVideoMakerProcessResponse> Handle(StartVideoMakerProcessRequest request, CancellationToken cancellationToken)
@@ -75,6 +78,12 @@ namespace Domain.UseCases
 
             await videoService.UpdateText(request.VideoId, text);
             //Text
+
+            //Voice
+            await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.CREATING_VOICE);
+            var voiceFileName = await voiceService.GenerateVoice(text);
+            await videoService.UpdateVoiceFile(request.VideoId, voiceFileName);
+            //Voice
 
             //Generate voice file
             //Generate Music file

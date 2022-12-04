@@ -1,5 +1,8 @@
 using Domain.Interfaces;
-using Infra.ExternalServices;
+using Infra.ExternalServices.Storage;
+using Infra.ExternalServices.TextGenerator;
+using Infra.ExternalServices.TextService;
+using Infra.ExternalServices.VoiceGenerator;
 using Infra.MySQL;
 using Infra.MySQL.Services;
 using Infra.RabbitMQ;
@@ -23,6 +26,8 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
 });
 builder.Services.AddSingleton<IVideoService, VideoService>();
+builder.Services.AddSingleton<GoogleCloudStorage>();
+builder.Services.AddSingleton<IVoiceService, VoiceService>();
 
 //Rabbit config
 var configSection = builder.Configuration.GetSection("RabbitMQ");

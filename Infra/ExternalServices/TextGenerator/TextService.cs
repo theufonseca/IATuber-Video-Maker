@@ -1,4 +1,5 @@
 ﻿using Domain.Interfaces;
+using Infra.ExternalServices.TextService.TextGenerator;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using OpenAI_API;
@@ -10,7 +11,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infra.ExternalServices
+namespace Infra.ExternalServices.TextGenerator
 {
     public class TextService : ITextService
     {
