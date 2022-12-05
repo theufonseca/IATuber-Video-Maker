@@ -12,6 +12,7 @@ namespace Domain.Enum
         STARTED,
         CREATING_TITLE,
         CREATING_TEXT,
+        CREATING_KEYWORDS,
         CREATING_VOICE,
         CREATING_MUSIC,
         CREATING_VIDEO,

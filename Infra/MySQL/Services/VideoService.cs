@@ -43,6 +43,21 @@ namespace Infra.MySQL.Services
             await dataContext.SaveChangesAsync();
         }
 
+        public async Task UpdateKeywords(int videoId, string keywords)
+        {
+            using var dataContext = serviceScopeFactory.CreateScope()
+                .ServiceProvider.GetRequiredService<DataContext>();
+
+            var video = await dataContext.Video.FirstOrDefaultAsync(x => x.Id == videoId);
+            if (video == null)
+                throw new ArgumentException("Video not found");
+
+            video.Keywords = keywords;
+            dataContext.Video.Update(video);
+
+            await dataContext.SaveChangesAsync();
+        }
+
         public async Task UpdateStatus(int videoId, VIDEO_STATUS newStatus)
         {
             using var dataContext = serviceScopeFactory.CreateScope()

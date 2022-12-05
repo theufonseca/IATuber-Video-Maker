@@ -28,12 +28,19 @@ namespace Infra.ExternalServices.TextGenerator
         }
 
         public async Task<string> GenerateText(string phrase)
+            => await CallOpenApiCompletions(BuildBodyText(phrase));
+        
+        public async Task<string> GenerateTitle(string phrase)
+            => await CallOpenApiCompletions(BuildBodyTitle(phrase));
+
+        public async Task<string> GenerateKeyWords(string phrase)
+            => await CallOpenApiCompletions(BuildBodyKeywords(phrase));
+
+        private async Task<string> CallOpenApiCompletions(HttpContent body)
         {
             string result = string.Empty;
             var client = clientFactory.CreateClient();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {Token}");
-            var body = BuildBodyText(phrase);
-
             var response = await client.PostAsync(CompletionsUri, body);
 
             if (response.IsSuccessStatusCode)
@@ -46,23 +53,22 @@ namespace Infra.ExternalServices.TextGenerator
             return result;
         }
 
-        public async Task<string> GenerateTitle(string phrase)
+        private HttpContent BuildBodyKeywords(string phrase)
         {
-            string result = string.Empty;
-            var client = clientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {Token}");
-            var body = BuildBodyTitle(phrase);
-
-            var response = await client.PostAsync(CompletionsUri, body);
-
-            if (response.IsSuccessStatusCode)
+            var body = new
             {
-                var objectResponse = await response.Content.ReadAsStringAsync()!;
-                var completions = JsonConvert.DeserializeObject<CompletionsResponse>(objectResponse);
-                result = completions?.Choices?.FirstOrDefault()?.Text ?? "";
-            }
+                model = "text-davinci-003",
+                prompt = phrase,
+                temperature = 0.7,
+                max_tokens = 3200,
+                top_p = 1,
+                frequency_penalty = 0,
+                presence_penalty = 0
+            };
 
-            return result;
+            var content = new StringContent(JsonConvert.SerializeObject(body));
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            return content;
         }
 
         private HttpContent BuildBodyText(string phrase)

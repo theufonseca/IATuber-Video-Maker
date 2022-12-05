@@ -18,6 +18,7 @@ namespace Domain.Aggregates
         public DateTime? UploadDate { get; set; }
         public string? Title { get; set; }
         public string? Text { get; set; }
+        public string? Keywords { get; set; }
         public string? VoiceFileName { get; set; }
         public string? MusicFileName { get; set; }
         public string? ImageFileName { get; set; }

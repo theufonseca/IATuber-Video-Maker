@@ -10,5 +10,6 @@ namespace Domain.Interfaces
     {
         Task<string> GenerateTitle(string phrase);
         Task<string> GenerateText(string phrase);
+        Task<string> GenerateKeyWords(string phrase);
     }
 }
