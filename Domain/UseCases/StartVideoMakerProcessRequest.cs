@@ -71,7 +71,7 @@ namespace Domain.UseCases
 
             await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.CREATING_TEXT);
             var text = await textService.GenerateText(phraseText);
-            text = text.Trim().Replace("\"", ""); ;
+            text = text.Trim().Replace("\"", "");
 
             if (string.IsNullOrEmpty(text))
                 throw new ArgumentException("Invalid text");
