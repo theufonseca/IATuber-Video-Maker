@@ -68,6 +68,7 @@ namespace Infra.MySQL.Services
                 throw new ArgumentException("Video not found");
 
             video.Status = newStatus;
+            video.LastUpdate = DateTime.Now;
             dataContext.Video.Update(video);
 
             await dataContext.SaveChangesAsync();

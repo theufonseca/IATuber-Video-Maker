@@ -24,5 +24,7 @@ namespace Domain.Aggregates
         public string? ImageFileName { get; set; }
         public string? EditedVideoFileName { get; set; }
         public string? ErrorDetail { get; set; }
+
+        public ICollection<Image> Images { get; set; }
     }
 }

@@ -13,6 +13,8 @@ namespace Domain.Enum
         CREATING_TITLE,
         CREATING_TEXT,
         CREATING_KEYWORDS,
+        TRANSLATING_KEYWORDS,
+        CREATING_IMAGES,
         CREATING_VOICE,
         CREATING_MUSIC,
         CREATING_VIDEO,

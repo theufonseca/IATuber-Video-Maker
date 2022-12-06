@@ -28,16 +28,23 @@ namespace Domain.UseCases
         private readonly IMessageQueue messageQueue;
         private readonly IConfiguration configuration;
         private readonly IVoiceService voiceService;
+        private readonly ITranslateService translateService;
+        private readonly IImageService imageService;
+        private readonly IImageDbService imageDbService;
 
         public StartVideoMakerProcessRequestHandler(IVideoService videoService,
             ITextService textService, IMessageQueue messageQueue, IConfiguration configuration,
-            IVoiceService voiceService)
+            IVoiceService voiceService, ITranslateService translateService, IImageService imageService,
+            IImageDbService imageDbService)
         {
             this.videoService = videoService;
             this.textService = textService;
             this.messageQueue = messageQueue;
             this.configuration = configuration;
             this.voiceService = voiceService;
+            this.translateService = translateService;
+            this.imageService = imageService;
+            this.imageDbService = imageDbService;
         }
 
         public async Task<StartVideoMakerProcessResponse> Handle(StartVideoMakerProcessRequest request, CancellationToken cancellationToken)
@@ -46,11 +53,9 @@ namespace Domain.UseCases
             var title = await CreateTitle(video);
             var text = await CreateText(video.Id, title);
             var keywords = await CreateKeyWords(video.Id, text);
+            var translatedKeyWords = await TranslateKeyWords(video.Id, keywords);
+            await CreateImages(video.Id, translatedKeyWords);
             await CreateVoice(video.Id, text);
-
-            //Get Key words
-            //Translate to english the KeyWords
-            //Generate Images to each keyword
 
             //Generate Music file
             //Edit video with voice, music and video
@@ -63,6 +68,32 @@ namespace Domain.UseCases
             {
                 Sucess = true
             };
+        }
+
+        private async Task CreateImages(int videoId, List<string> keyWords)
+        {
+            await videoService.UpdateStatus(videoId, VIDEO_STATUS.CREATING_IMAGES);
+            foreach (var item in keyWords)
+            {
+                var urlImage = await imageService.GenerateImage(item);
+                var newImage = Image.New(videoId, urlImage);
+                await imageDbService.Create(newImage);
+            }
+        }
+
+        private async Task<List<string>> TranslateKeyWords(int videoId, List<string> keywords)
+        {
+            await videoService.UpdateStatus(videoId, VIDEO_STATUS.TRANSLATING_KEYWORDS);
+            List<string> translatedKeywords = new();
+
+            foreach (var item in keywords)
+            {
+                var translatedKeyword = await translateService.GetTranslate(item);
+                if (!string.IsNullOrEmpty(translatedKeyword))
+                    translatedKeywords.Add(translatedKeyword);
+            }
+
+            return translatedKeywords;
         }
 
         private async Task CreateVoice(int videoId, string text)
@@ -93,14 +124,14 @@ namespace Domain.UseCases
             if (keyWordsPlainText.Contains("-"))
             {
                 keywords = keyWordsPlainText.Split("-").ToList();
-                
+
                 foreach (var item in keywords)
                 {
                     var formatedItem = item.Trim();
                     if (!string.IsNullOrEmpty(formatedItem))
                         formatedKeys.Add(formatedItem);
                 }
-            } 
+            }
             else if (keyWordsPlainText.Contains(","))
             {
                 keywords = keyWordsPlainText.Split(",").ToList();
@@ -130,7 +161,8 @@ namespace Domain.UseCases
 
             await videoService.UpdateKeywords(videoId, string.Join(",", keywords));
 
-            return formatedKeys;
+            var maxKeywords = Convert.ToInt32(configuration.GetSection("MaxKeyWords").Value);
+            return formatedKeys.Take(maxKeywords).ToList();
         }
 
         private async Task<string> CreateText(int videoId, string title)

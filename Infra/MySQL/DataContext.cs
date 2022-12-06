@@ -12,5 +12,13 @@ namespace Infra.MySQL
     {
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
         public DbSet<Video> Video { get; set; }
+        public DbSet<Image> Image { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Video>()
+                .HasMany(x => x.Images)
+                .WithOne(x => x.Video);
+        }
     }
 }
