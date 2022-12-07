@@ -31,11 +31,12 @@ namespace Domain.UseCases
         private readonly ITranslateService translateService;
         private readonly IImageService imageService;
         private readonly IImageDbService imageDbService;
+        private readonly IMusicService musicService;
 
         public StartVideoMakerProcessRequestHandler(IVideoService videoService,
             ITextService textService, IMessageQueue messageQueue, IConfiguration configuration,
             IVoiceService voiceService, ITranslateService translateService, IImageService imageService,
-            IImageDbService imageDbService)
+            IImageDbService imageDbService, IMusicService musicService)
         {
             this.videoService = videoService;
             this.textService = textService;
@@ -45,19 +46,19 @@ namespace Domain.UseCases
             this.translateService = translateService;
             this.imageService = imageService;
             this.imageDbService = imageDbService;
+            this.musicService = musicService;
         }
 
         public async Task<StartVideoMakerProcessResponse> Handle(StartVideoMakerProcessRequest request, CancellationToken cancellationToken)
         {
             var video = await GetVideo(request);
             var title = await CreateTitle(video);
-            var text = await CreateText(video.Id, title);
-            var keywords = await CreateKeyWords(video.Id, text);
-            var translatedKeyWords = await TranslateKeyWords(video.Id, keywords);
-            await CreateImages(video.Id, translatedKeyWords);
-            await CreateVoice(video.Id, text);
-
-            //Generate Music file
+            var text = await CreateText(video, title);
+            var keywords = await CreateKeyWords(video, text);
+            var translatedKeyWords = await TranslateKeyWords(video, keywords);
+            await CreateImages(video, translatedKeyWords);
+            await CreateVoice(video, text);
+            await CreateMusic(video, text);
             //Edit video with voice, music and video
 
             //Post to Upload queue
@@ -70,20 +71,29 @@ namespace Domain.UseCases
             };
         }
 
-        private async Task CreateImages(int videoId, List<string> keyWords)
+        private async Task CreateMusic(Video video, string text)
         {
-            await videoService.UpdateStatus(videoId, VIDEO_STATUS.CREATING_IMAGES);
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_MUSIC);
+            var urlMusic = await musicService.GenerateMusic(text);
+            await videoService.UpdateMusic(video.Id, urlMusic);
+        }
+
+        private async Task CreateImages(Video video, List<string> keyWords)
+        {
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_IMAGES);
+            int i = 0;
             foreach (var item in keyWords)
             {
-                var urlImage = await imageService.GenerateImage(item);
-                var newImage = Image.New(videoId, urlImage);
+                i += 1;
+                var urlImage = await imageService.GenerateImage(item, video.Id, i);
+                var newImage = Image.New(video.Id, urlImage);
                 await imageDbService.Create(newImage);
             }
         }
 
-        private async Task<List<string>> TranslateKeyWords(int videoId, List<string> keywords)
+        private async Task<List<string>> TranslateKeyWords(Video video, List<string> keywords)
         {
-            await videoService.UpdateStatus(videoId, VIDEO_STATUS.TRANSLATING_KEYWORDS);
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.TRANSLATING_KEYWORDS);
             List<string> translatedKeywords = new();
 
             foreach (var item in keywords)
@@ -96,19 +106,19 @@ namespace Domain.UseCases
             return translatedKeywords;
         }
 
-        private async Task CreateVoice(int videoId, string text)
+        private async Task CreateVoice(Video video, string text)
         {
-            await videoService.UpdateStatus(videoId, VIDEO_STATUS.CREATING_VOICE);
-            var voiceFileName = await voiceService.GenerateVoice(text);
-            await videoService.UpdateVoiceFile(videoId, voiceFileName);
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_VOICE);
+            var voiceFileName = await voiceService.GenerateVoice(text, video.Id);
+            await videoService.UpdateVoiceFile(video.Id, voiceFileName);
         }
 
-        private async Task<List<string>> CreateKeyWords(int videoId, string text)
+        private async Task<List<string>> CreateKeyWords(Video video, string text)
         {
             var phraseKeyWordsModel = configuration.GetSection("Phrases:Keys").Value!;
             var phraseKeyWords = phraseKeyWordsModel.Replace("@text", text);
 
-            await videoService.UpdateStatus(videoId, VIDEO_STATUS.CREATING_KEYWORDS);
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_KEYWORDS);
             var keyWordsPlainText = await textService.GenerateKeyWords(phraseKeyWords);
             keyWordsPlainText = keyWordsPlainText.Trim()
                 .Replace("\"", "")
@@ -159,25 +169,25 @@ namespace Domain.UseCases
                 }
             }
 
-            await videoService.UpdateKeywords(videoId, string.Join(",", keywords));
+            await videoService.UpdateKeywords(video.Id, string.Join(",", keywords));
 
             var maxKeywords = Convert.ToInt32(configuration.GetSection("MaxKeyWords").Value);
             return formatedKeys.Take(maxKeywords).ToList();
         }
 
-        private async Task<string> CreateText(int videoId, string title)
+        private async Task<string> CreateText(Video video, string title)
         {
             var phraseTextModel = configuration.GetSection("Phrases:Text").Value!;
             var phraseText = phraseTextModel.Replace("@title", title);
 
-            await videoService.UpdateStatus(videoId, VIDEO_STATUS.CREATING_TEXT);
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_TEXT);
             var text = await textService.GenerateText(phraseText);
             text = text.Trim().Replace("\"", "");
 
             if (string.IsNullOrEmpty(text))
                 throw new ArgumentException("Invalid text");
 
-            await videoService.UpdateText(videoId, text);
+            await videoService.UpdateText(video.Id, text);
 
             return text;
         }

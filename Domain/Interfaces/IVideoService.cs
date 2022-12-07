@@ -17,5 +17,6 @@ namespace Domain.Interfaces
         Task UpdateKeywords(int videoId, string keywords);
         Task UpdateVoiceFile(int videoId, string fileName);
         Task SetError(int videoId, string errorDetail);
+        Task UpdateMusic(int videoId, string fileName);
     }
 }

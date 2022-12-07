@@ -25,7 +25,7 @@ namespace Infra.ExternalServices.Image
             this.googleCloudStorage = googleCloudStorage;
         }
 
-        public async Task<string> GenerateImage(string keyWord)
+        public async Task<string> GenerateImage(string keyWord, int videoId, int index)
         {
             string base64 = string.Empty;
             var client = httpClientFactory.CreateClient();
@@ -44,13 +44,13 @@ namespace Infra.ExternalServices.Image
             if (string.IsNullOrEmpty(base64))
                 return string.Empty;
 
-            var urlResponse = await UploadImage(base64);
+            var urlResponse = await UploadImage(base64, videoId, index);
             return urlResponse;
         }
 
-        private async Task<string> UploadImage(string base64)
+        private async Task<string> UploadImage(string base64, int videoId, int index)
         {
-            var name = Guid.NewGuid().ToString().Replace("-","");
+            var name = $"image-{videoId}-{index}";
             byte[] bytes = Convert.FromBase64String(base64);
             using var imageStream = new MemoryStream(bytes);
             var urlResponse = await googleCloudStorage.UploadFileAsync($"{name}.png", imageStream);

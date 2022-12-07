@@ -23,9 +23,9 @@ namespace Infra.ExternalServices.VoiceGenerator
             this.configuration = configuration;
         }
 
-        public async Task<string> GenerateVoice(string text)
+        public async Task<string> GenerateVoice(string text, int videoId)
         {
-            var name = Guid.NewGuid().ToString().Replace("-", "");
+            var name = $"voice-{videoId}";
 
             var authenticator = new IamAuthenticator(apikey: "HTE660W-rMUZfJa_Tn2RqedbcgY9bvoQX3wAzcWyhpVy");
             var textToSpeech = new TextToSpeechService(authenticator);

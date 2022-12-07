@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace Domain.Interfaces
 {
-    public interface IImageService
+    public interface IMusicService
     {
-        Task<string> GenerateImage(string keyWord, int videoId, int index);
+        Task<string> GenerateMusic(string text);
     }
 }

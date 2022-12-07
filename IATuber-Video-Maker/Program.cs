@@ -1,9 +1,11 @@
 using Domain.Interfaces;
 using Infra.ExternalServices.Image;
+using Infra.ExternalServices.Music;
 using Infra.ExternalServices.Storage;
 using Infra.ExternalServices.TextGenerator;
 using Infra.ExternalServices.TextService;
 using Infra.ExternalServices.Translate;
+using Infra.ExternalServices.VideoEditor;
 using Infra.ExternalServices.VoiceGenerator;
 using Infra.MySQL;
 using Infra.MySQL.Services;
@@ -33,6 +35,8 @@ builder.Services.AddSingleton<IVoiceService, VoiceService>();
 builder.Services.AddSingleton<ITranslateService, TranslateService>();
 builder.Services.AddSingleton<IImageService, ImageService>();
 builder.Services.AddSingleton<IImageDbService, ImageDbService>();
+builder.Services.AddSingleton<IMusicService, MusicService>();
+builder.Services.AddSingleton<IVideoEditor, VideoEditor>();
 
 //Rabbit config
 var configSection = builder.Configuration.GetSection("RabbitMQ");

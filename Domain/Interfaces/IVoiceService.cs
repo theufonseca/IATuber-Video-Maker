@@ -8,6 +8,6 @@ namespace Domain.Interfaces
 {
     public interface IVoiceService
     {
-        Task<string> GenerateVoice(string text);
+        Task<string> GenerateVoice(string text, int videoId);
     }
 }

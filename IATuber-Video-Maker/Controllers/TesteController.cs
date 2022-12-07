@@ -10,17 +10,22 @@ namespace IATuber_Video_Maker.Controllers
     {
         private readonly IVoiceService voiceService;
         private readonly ITranslateService translateService;
+        private readonly IVideoEditor videoEditor;
+        private readonly IWebHostEnvironment environment;
 
-        public TesteController(IVoiceService voiceService, ITranslateService translateService)
+        public TesteController(IVoiceService voiceService, ITranslateService translateService,
+            IVideoEditor videoEditor, IWebHostEnvironment environment)
         {
             this.voiceService = voiceService;
             this.translateService = translateService;
+            this.videoEditor = videoEditor;
+            this.environment = environment;
         }
 
         [HttpGet("GenerateVoice")]
         public async Task<IActionResult> Get()
         {
-            await voiceService.GenerateVoice("Olá mundo");
+            await voiceService.GenerateVoice("Olá mundo", 1);
             return Ok();
         }
 
@@ -28,6 +33,13 @@ namespace IATuber_Video_Maker.Controllers
         public async Task<IActionResult> Get2()
         {
             await translateService.GetTranslate("Olá mundo!");
+            return Ok();
+        }
+
+        [HttpGet("Editor")]
+        public async Task<IActionResult> Get3()
+        {
+            await videoEditor.Edit(environment.WebRootPath);
             return Ok();
         }
     }
