@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Domain.Dto;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,6 @@ namespace Domain.Interfaces
 {
     public interface IMusicService
     {
-        Task<string> GenerateMusic(string text);
+        Task<FileResponseDto> GenerateMusic(string text);
     }
 }

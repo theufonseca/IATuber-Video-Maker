@@ -1,5 +1,6 @@
 ﻿using Domain.Aggregates;
 using Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -25,6 +26,16 @@ namespace Infra.MySQL.Services
 
             dataContext.Image.Add(image);
             await dataContext.SaveChangesAsync();
+        }
+
+        public async Task<List<Image>> GetByVideoId(int videoId)
+        {
+            using var dataContext = serviceScopeFactory.CreateScope()
+                .ServiceProvider.GetRequiredService<DataContext>();
+
+            var images = await dataContext.Image.Where(x => x.VideoId == videoId).ToListAsync();
+
+            return images;
         }
     }
 }

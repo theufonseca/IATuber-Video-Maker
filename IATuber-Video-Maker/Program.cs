@@ -30,13 +30,13 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
 });
 builder.Services.AddSingleton<IVideoService, VideoService>();
-builder.Services.AddSingleton<GoogleCloudStorage>();
 builder.Services.AddSingleton<IVoiceService, VoiceService>();
 builder.Services.AddSingleton<ITranslateService, TranslateService>();
 builder.Services.AddSingleton<IImageService, ImageService>();
 builder.Services.AddSingleton<IImageDbService, ImageDbService>();
 builder.Services.AddSingleton<IMusicService, MusicService>();
 builder.Services.AddSingleton<IVideoEditor, VideoEditor>();
+builder.Services.AddSingleton<ICloudStorage, GoogleCloudStorage>();
 
 //Rabbit config
 var configSection = builder.Configuration.GetSection("RabbitMQ");

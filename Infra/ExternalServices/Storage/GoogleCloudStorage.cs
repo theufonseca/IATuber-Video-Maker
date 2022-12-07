@@ -1,4 +1,5 @@
-﻿using Google.Apis.Auth.OAuth2;
+﻿using Domain.Interfaces;
+using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Infra.ExternalServices.Storage
 {
-    public class GoogleCloudStorage
+    public class GoogleCloudStorage : ICloudStorage
     {
         private readonly GoogleCredential googleCredential;
         private readonly StorageClient storageClient;
@@ -27,6 +28,24 @@ namespace Infra.ExternalServices.Storage
         {
             var result = await storageClient.UploadObjectAsync(bucketName, fileName, null, stream);
             return result.MediaLink;
+        }
+
+        public async Task DownloadFileAsync(string fileName, string pathToSave)
+        {
+            using var ms = new MemoryStream();
+            var result = await storageClient.DownloadObjectAsync(bucketName, fileName, ms);
+            CheckDirectory(pathToSave);
+            using var fs = File.Create($"{pathToSave}\\{fileName}");
+            ms.Position = 0;
+            ms.CopyTo(fs);
+            fs.Flush();
+            fs.Dispose();
+        }
+
+        private void CheckDirectory(string path)
+        {
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
         }
 
         public async Task DeleteFileAsync(string fileName)

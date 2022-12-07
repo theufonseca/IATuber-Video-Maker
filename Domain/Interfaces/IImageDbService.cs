@@ -10,5 +10,6 @@ namespace Domain.Interfaces
     public interface IImageDbService
     {
         Task Create(Image image);
+        Task<List<Image>> GetByVideoId(int videoId);
     }
 }

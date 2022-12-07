@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Domain.Dto;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,6 @@ namespace Domain.Interfaces
 {
     public interface IImageService
     {
-        Task<string> GenerateImage(string keyWord, int videoId, int index);
+        Task<FileResponseDto?> GenerateImage(string keyWord, int videoId, int index);
     }
 }

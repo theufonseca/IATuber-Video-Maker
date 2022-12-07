@@ -20,9 +20,9 @@ namespace Domain.Aggregates
         public string? Text { get; set; }
         public string? Keywords { get; set; }
         public string? VoiceFileName { get; set; }
+        public string? VoiceUrl { get; set; }
         public string? MusicFileName { get; set; }
-        public string? ImageFileName { get; set; }
-        public string? EditedVideoFileName { get; set; }
+        public string? MusicUrl { get; set; }
         public string? ErrorDetail { get; set; }
 
         public ICollection<Image> Images { get; set; }

@@ -32,11 +32,12 @@ namespace Domain.UseCases
         private readonly IImageService imageService;
         private readonly IImageDbService imageDbService;
         private readonly IMusicService musicService;
+        private readonly ICloudStorage cloudStorage;
 
         public StartVideoMakerProcessRequestHandler(IVideoService videoService,
             ITextService textService, IMessageQueue messageQueue, IConfiguration configuration,
             IVoiceService voiceService, ITranslateService translateService, IImageService imageService,
-            IImageDbService imageDbService, IMusicService musicService)
+            IImageDbService imageDbService, IMusicService musicService, ICloudStorage cloudStorage)
         {
             this.videoService = videoService;
             this.textService = textService;
@@ -47,35 +48,73 @@ namespace Domain.UseCases
             this.imageService = imageService;
             this.imageDbService = imageDbService;
             this.musicService = musicService;
+            this.cloudStorage = cloudStorage;
         }
 
         public async Task<StartVideoMakerProcessResponse> Handle(StartVideoMakerProcessRequest request, CancellationToken cancellationToken)
         {
             var video = await GetVideo(request);
-            var title = await CreateTitle(video);
-            var text = await CreateText(video, title);
-            var keywords = await CreateKeyWords(video, text);
-            var translatedKeyWords = await TranslateKeyWords(video, keywords);
-            await CreateImages(video, translatedKeyWords);
-            await CreateVoice(video, text);
-            await CreateMusic(video, text);
-            //Edit video with voice, music and video
-
-            //Post to Upload queue
-            await messageQueue.PostUploadQueue(request.VideoId);
-            await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.READY_TO_UPLOAD);
-
-            return new StartVideoMakerProcessResponse
+            try
             {
-                Sucess = true
-            };
+                var title = await CreateTitle(video);
+                var text = await CreateText(video, title);
+                var keywords = await CreateKeyWords(video, text);
+                var translatedKeyWords = await TranslateKeyWords(video, keywords);
+                await CreateImages(video, translatedKeyWords);
+                await CreateVoice(video, text);
+                await CreateMusic(video, text);
+                await DownloadFiles(video.Id);
+
+                await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.READY_TO_EDIT);
+
+                return new StartVideoMakerProcessResponse
+                {
+                    Sucess = true
+                };
+            }
+            catch (Exception ex)
+            {
+                await videoService.SetError(video.Id, $"{ex.Message}###{ex?.InnerException?.Message ?? ""}");
+
+                return new StartVideoMakerProcessResponse
+                {
+                    Sucess = false
+                };
+            }
+        }
+
+        private async Task DownloadFiles(int id)
+        {
+            await videoService.UpdateStatus(id, VIDEO_STATUS.DOWNLOADING_FILES);
+
+            var video = await videoService.GetById(id);
+            var pathToDownload = configuration.GetSection("DownloadPath").Value!;
+            pathToDownload = pathToDownload.Replace("@id", id.ToString());
+
+            if (string.IsNullOrEmpty(video?.VoiceFileName))
+                throw new ArgumentException("Voice file does not exists");
+
+            await cloudStorage.DownloadFileAsync(video.VoiceFileName, pathToDownload);
+
+            if (string.IsNullOrEmpty(video?.MusicFileName))
+                throw new ArgumentException("Music file does not exists");
+
+            await cloudStorage.DownloadFileAsync(video.MusicFileName, pathToDownload);
+
+            foreach (var item in video.Images)
+            {
+                if (string.IsNullOrEmpty(item.ImageFileName))
+                    throw new ArgumentException("Voice file does not exists");
+
+                await cloudStorage.DownloadFileAsync(item.ImageFileName, $"{pathToDownload}\\Images");
+            }
         }
 
         private async Task CreateMusic(Video video, string text)
         {
             await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_MUSIC);
-            var urlMusic = await musicService.GenerateMusic(text);
-            await videoService.UpdateMusic(video.Id, urlMusic);
+            var fileResponse = await musicService.GenerateMusic(text);
+            await videoService.UpdateMusic(video.Id, fileResponse.FileName, fileResponse.Url);
         }
 
         private async Task CreateImages(Video video, List<string> keyWords)
@@ -85,8 +124,12 @@ namespace Domain.UseCases
             foreach (var item in keyWords)
             {
                 i += 1;
-                var urlImage = await imageService.GenerateImage(item, video.Id, i);
-                var newImage = Image.New(video.Id, urlImage);
+                var fileResponse = await imageService.GenerateImage(item, video.Id, i);
+
+                if (fileResponse is null)
+                    continue;
+
+                var newImage = Image.New(video.Id, fileResponse.FileName, fileResponse.Url);
                 await imageDbService.Create(newImage);
             }
         }
@@ -109,8 +152,8 @@ namespace Domain.UseCases
         private async Task CreateVoice(Video video, string text)
         {
             await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_VOICE);
-            var voiceFileName = await voiceService.GenerateVoice(text, video.Id);
-            await videoService.UpdateVoiceFile(video.Id, voiceFileName);
+            var fileResponse = await voiceService.GenerateVoice(text, video.Id);
+            await videoService.UpdateVoiceFile(video.Id, fileResponse.FileName, fileResponse.Url);
         }
 
         private async Task<List<string>> CreateKeyWords(Video video, string text)

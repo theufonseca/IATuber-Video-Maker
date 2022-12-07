@@ -25,7 +25,7 @@ namespace Infra.MySQL.Services
             using var dataContext = serviceScopeFactory.CreateScope()
                 .ServiceProvider.GetRequiredService<DataContext>();
 
-            return await dataContext.Video.FirstOrDefaultAsync(x => x.Id == id) ?? null;
+            return await dataContext.Video.Include(x => x.Images).FirstOrDefaultAsync(x => x.Id == id) ?? null;
         }
 
         public async Task SetError(int videoId, string errorDetail)
@@ -38,6 +38,7 @@ namespace Infra.MySQL.Services
                 return;
             
             video.ErrorDetail = errorDetail.Trim();
+            video.Success = false;
             dataContext.Video.Update(video);
 
             await dataContext.SaveChangesAsync();
@@ -58,7 +59,7 @@ namespace Infra.MySQL.Services
             await dataContext.SaveChangesAsync();
         }
 
-        public async Task UpdateMusic(int videoId, string fileName)
+        public async Task UpdateMusic(int videoId, string fileName, string fileUrl)
         {
             using var dataContext = serviceScopeFactory.CreateScope()
                 .ServiceProvider.GetRequiredService<DataContext>();
@@ -68,6 +69,7 @@ namespace Infra.MySQL.Services
                 throw new ArgumentException("Video not found");
 
             video.MusicFileName = fileName;
+            video.MusicUrl = fileUrl;
             dataContext.Video.Update(video);
 
             await dataContext.SaveChangesAsync();
@@ -119,7 +121,7 @@ namespace Infra.MySQL.Services
             await dataContext.SaveChangesAsync();
         }
 
-        public async Task UpdateVoiceFile(int videoId, string fileName)
+        public async Task UpdateVoiceFile(int videoId, string fileName, string fileUrl)
         {
             using var dataContext = serviceScopeFactory.CreateScope()
                 .ServiceProvider.GetRequiredService<DataContext>();
@@ -129,6 +131,7 @@ namespace Infra.MySQL.Services
                 throw new ArgumentException("Video not found");
 
             video.VoiceFileName = fileName;
+            video.VoiceUrl = fileUrl;
             dataContext.Video.Update(video);
 
             await dataContext.SaveChangesAsync();

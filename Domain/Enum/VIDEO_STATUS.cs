@@ -18,6 +18,7 @@ namespace Domain.Enum
         CREATING_VOICE,
         CREATING_MUSIC,
         CREATING_VIDEO,
+        DOWNLOADING_FILES,
         READY_TO_EDIT,
         EDITING_VIDEO,
         READY_TO_UPLOAD,

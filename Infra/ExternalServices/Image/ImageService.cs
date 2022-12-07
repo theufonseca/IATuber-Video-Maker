@@ -1,4 +1,5 @@
-﻿using Domain.Interfaces;
+﻿using Domain.Dto;
+using Domain.Interfaces;
 using Infra.ExternalServices.Storage;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -15,17 +16,17 @@ namespace Infra.ExternalServices.Image
     {
         private readonly IHttpClientFactory httpClientFactory;
         private readonly IConfiguration configuration;
-        private readonly GoogleCloudStorage googleCloudStorage;
+        private readonly ICloudStorage googleCloudStorage;
 
         public ImageService(IHttpClientFactory httpClientFactory, IConfiguration configuration,
-            GoogleCloudStorage googleCloudStorage)
+            ICloudStorage googleCloudStorage)
         {
             this.httpClientFactory = httpClientFactory;
             this.configuration = configuration;
             this.googleCloudStorage = googleCloudStorage;
         }
 
-        public async Task<string> GenerateImage(string keyWord, int videoId, int index)
+        public async Task<FileResponseDto?> GenerateImage(string keyWord, int videoId, int index)
         {
             string base64 = string.Empty;
             var client = httpClientFactory.CreateClient();
@@ -42,31 +43,43 @@ namespace Infra.ExternalServices.Image
             }
 
             if (string.IsNullOrEmpty(base64))
-                return string.Empty;
+                return null;
 
             var urlResponse = await UploadImage(base64, videoId, index);
             return urlResponse;
         }
 
-        private async Task<string> UploadImage(string base64, int videoId, int index)
+        private async Task<FileResponseDto?> UploadImage(string base64, int videoId, int index)
         {
-            var name = $"image-{videoId}-{index}";
+            var name = $"image-{videoId}-{index}.png";
             byte[] bytes = Convert.FromBase64String(base64);
             using var imageStream = new MemoryStream(bytes);
-            var urlResponse = await googleCloudStorage.UploadFileAsync($"{name}.png", imageStream);
+            var urlResponse = await googleCloudStorage.UploadFileAsync(name, imageStream);
 
             if (string.IsNullOrEmpty(urlResponse))
                 throw new ArgumentException("Not found Url repsonse when uploading file to google");
 
-            return urlResponse;
+            return new FileResponseDto
+            {
+                Url = urlResponse,
+                FileName = name
+            };
         }
 
         private HttpContent GetBody(string keyWord)
         {
+            var widthSection = configuration.GetSection("StableDiffusion:Width").Value!;
+            var heighSection = configuration.GetSection("StableDiffusion:Height").Value!;
+
+            var width = string.IsNullOrEmpty(widthSection) ? 500 : Convert.ToInt32(widthSection);
+            var height = string.IsNullOrEmpty(heighSection) ? 500 : Convert.ToInt32(heighSection);
+
             var body = new
             {
                 prompt = keyWord,
-                steps = Convert.ToInt32(configuration.GetSection("StableDiffusion:Steps").Value)
+                steps = Convert.ToInt32(configuration.GetSection("StableDiffusion:Steps").Value),
+                width = width,
+                height = height
             };
 
             var stringContent = new StringContent(JsonConvert.SerializeObject(body));

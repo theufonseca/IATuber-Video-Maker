@@ -1,4 +1,5 @@
-﻿using Domain.Interfaces;
+﻿using Domain.Dto;
+using Domain.Interfaces;
 using IBM.Cloud.SDK.Core.Authentication.Iam;
 using IBM.Watson.TextToSpeech.v1;
 using Infra.ExternalServices.Storage;
@@ -13,19 +14,19 @@ namespace Infra.ExternalServices.VoiceGenerator
 {
     public class VoiceService : IVoiceService
     {
-        private readonly GoogleCloudStorage googleCloudStorage;
+        private readonly ICloudStorage googleCloudStorage;
         private readonly IConfiguration configuration;
 
-        public VoiceService(GoogleCloudStorage googleCloudStorage,
+        public VoiceService(ICloudStorage googleCloudStorage,
             IConfiguration configuration)
         {
             this.googleCloudStorage = googleCloudStorage;
             this.configuration = configuration;
         }
 
-        public async Task<string> GenerateVoice(string text, int videoId)
+        public async Task<FileResponseDto> GenerateVoice(string text, int videoId)
         {
-            var name = $"voice-{videoId}";
+            var name = $"voice-{videoId}.mp3";
 
             var authenticator = new IamAuthenticator(apikey: "HTE660W-rMUZfJa_Tn2RqedbcgY9bvoQX3wAzcWyhpVy");
             var textToSpeech = new TextToSpeechService(authenticator);
@@ -36,8 +37,12 @@ namespace Infra.ExternalServices.VoiceGenerator
                 throw new ArgumentException("Error when generating voice");
 
             var stream = result.Result;
-            var urlFile = await googleCloudStorage.UploadFileAsync($"{name}.mp3", stream);
-            return urlFile;
+            var urlFile = await googleCloudStorage.UploadFileAsync(name, stream);
+            return new FileResponseDto
+            {
+                Url = urlFile,
+                FileName = name
+            };
         }
     }
 }
