@@ -41,6 +41,7 @@ namespace Infra.ExternalServices.TextGenerator
             string result = string.Empty;
             var client = clientFactory.CreateClient();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {Token}");
+            client.Timeout = TimeSpan.FromSeconds(30);
             var response = await client.PostAsync(CompletionsUri, body);
 
             if (response.IsSuccessStatusCode)
@@ -60,7 +61,7 @@ namespace Infra.ExternalServices.TextGenerator
                 model = "text-davinci-003",
                 prompt = phrase,
                 temperature = 0.7,
-                max_tokens = 3200,
+                max_tokens = 2500,
                 top_p = 1,
                 frequency_penalty = 0,
                 presence_penalty = 0
@@ -78,7 +79,7 @@ namespace Infra.ExternalServices.TextGenerator
                 model = "text-davinci-003",
                 prompt = phrase,
                 temperature = 0.7,
-                max_tokens = 4000,
+                max_tokens = 2500,
                 top_p = 1,
                 frequency_penalty = 0,
                 presence_penalty = 0
@@ -95,7 +96,7 @@ namespace Infra.ExternalServices.TextGenerator
                 model = "text-davinci-003",
                 prompt = phrase,
                 temperature = 0.7,
-                max_tokens = 256,
+                max_tokens = 2500,
                 top_p = 1,
                 frequency_penalty = 0,
                 presence_penalty = 0

@@ -30,7 +30,7 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
 });
 builder.Services.AddSingleton<IVideoService, VideoService>();
-builder.Services.AddSingleton<IVoiceService, VoiceService>();
+builder.Services.AddSingleton<IVoiceService, VoiceServiceAzure>();
 builder.Services.AddSingleton<ITranslateService, TranslateService>();
 builder.Services.AddSingleton<IImageService, ImageService>();
 builder.Services.AddSingleton<IImageDbService, ImageDbService>();

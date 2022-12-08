@@ -35,16 +35,23 @@ namespace Infra.ExternalServices.Image
             var url = configuration.GetSection("StableDiffusion:Url").Value;
             client.Timeout = TimeSpan.FromHours(1);
             var response = await client.PostAsync(url, body);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 var stringContent = await response.Content.ReadAsStringAsync();
                 var imageResponse = JsonConvert.DeserializeObject<ImageResponse>(stringContent);
                 base64 = imageResponse?.Images?.FirstOrDefault() ?? "";
+
+                if (string.IsNullOrEmpty(base64))
+                    throw new ArgumentException($"Image not generated, details: {stringContent}");
+            }
+            else
+            {
+                var stringContent = await response.Content.ReadAsStringAsync();
+                if (string.IsNullOrEmpty(base64))
+                    throw new ArgumentException($"Image not generated, details: {stringContent}");
             }
 
-            if (string.IsNullOrEmpty(base64))
-                return null;
 
             var urlResponse = await UploadImage(keyWord, base64, videoId, index);
             return urlResponse;

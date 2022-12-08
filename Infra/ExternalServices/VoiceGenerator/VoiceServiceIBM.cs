@@ -12,12 +12,12 @@ using System.Threading.Tasks;
 
 namespace Infra.ExternalServices.VoiceGenerator
 {
-    public class VoiceService : IVoiceService
+    public class VoiceServiceIBM : IVoiceService
     {
         private readonly ICloudStorage googleCloudStorage;
         private readonly IConfiguration configuration;
 
-        public VoiceService(ICloudStorage googleCloudStorage,
+        public VoiceServiceIBM(ICloudStorage googleCloudStorage,
             IConfiguration configuration)
         {
             this.googleCloudStorage = googleCloudStorage;
