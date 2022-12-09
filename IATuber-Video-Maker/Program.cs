@@ -14,6 +14,9 @@ using Infra.RabbitMQ.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using RabbitMQ.Client;
+using Polly;
+using Polly.Extensions.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,7 +59,8 @@ builder.Services.AddSingleton(x => x.GetRequiredService<RabbitModelFactory>().Cr
 builder.Services.AddSingleton<IMessageQueue, UploadVideoMessage>();
 //Rabbit config
 
-builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("General").AddPolicyHandler(GetRetryPolicy());
+
 builder.Services.AddSingleton<ITextService, TextService>();
 
 var app = builder.Build();
@@ -75,3 +79,12 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+
+static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .OrResult(msg => !msg.IsSuccessStatusCode)
+        .WaitAndRetryAsync(5, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+}

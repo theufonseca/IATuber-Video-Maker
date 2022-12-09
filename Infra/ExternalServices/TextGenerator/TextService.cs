@@ -29,7 +29,7 @@ namespace Infra.ExternalServices.TextGenerator
 
         public async Task<string> GenerateText(string phrase)
             => await CallOpenApiCompletions(BuildBodyText(phrase));
-        
+
         public async Task<string> GenerateTitle(string phrase)
             => await CallOpenApiCompletions(BuildBodyTitle(phrase));
 
@@ -38,8 +38,10 @@ namespace Infra.ExternalServices.TextGenerator
 
         private async Task<string> CallOpenApiCompletions(HttpContent body)
         {
+            int trycount = 2;
+        tryagain:
             string result = string.Empty;
-            var client = clientFactory.CreateClient();
+            var client = clientFactory.CreateClient("General");
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {Token}");
             client.Timeout = TimeSpan.FromSeconds(30);
             var response = await client.PostAsync(CompletionsUri, body);
@@ -49,6 +51,14 @@ namespace Infra.ExternalServices.TextGenerator
                 var objectResponse = await response.Content.ReadAsStringAsync()!;
                 var completions = JsonConvert.DeserializeObject<CompletionsResponse>(objectResponse);
                 result = completions?.Choices?.FirstOrDefault()?.Text ?? "";
+            }
+            else
+            {
+                if (trycount > 0)
+                {
+                    trycount -= 1;
+                    goto tryagain;
+                }
             }
 
             return result;

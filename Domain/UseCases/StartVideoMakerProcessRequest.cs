@@ -1,5 +1,6 @@
 ﻿using Domain.Aggregates;
 using Domain.Enum;
+using Domain.Helpers;
 using Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Configuration;
@@ -64,7 +65,6 @@ namespace Domain.UseCases
                 await CreateVoice(video, text);
                 await CreateMusic(video, text);
                 await DownloadFiles(video.Id);
-
                 await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.READY_TO_EDIT);
 
                 return new StartVideoMakerProcessResponse
@@ -75,7 +75,6 @@ namespace Domain.UseCases
             catch (Exception ex)
             {
                 await videoService.SetError(video.Id, $"{ex.Message}###{ex?.InnerException?.Message ?? ""}");
-
                 return new StartVideoMakerProcessResponse
                 {
                     Sucess = false
@@ -89,7 +88,7 @@ namespace Domain.UseCases
 
             var video = await videoService.GetById(id);
             var pathToDownload = configuration.GetSection("DownloadPath").Value!;
-            pathToDownload = $"{pathToDownload.Replace("@id", id.ToString())}-{video.Theme.Replace(" ","")}";
+            pathToDownload = $"{pathToDownload.Replace("@id", id.ToString())}-{video.Theme.Replace(" ", "")}";
 
             if (string.IsNullOrEmpty(video?.VoiceFileName))
                 throw new ArgumentException("Voice file does not exists");
@@ -105,7 +104,6 @@ namespace Domain.UseCases
             {
                 if (string.IsNullOrEmpty(item.ImageFileName))
                     throw new ArgumentException("Voice file does not exists");
-
                 await cloudStorage.DownloadFileAsync(item.ImageFileName, $"{pathToDownload}\\Images");
             }
         }
@@ -120,35 +118,32 @@ namespace Domain.UseCases
         private async Task CreateImages(Video video, List<string> keyWords)
         {
             await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_IMAGES);
+            var keyPhrasesWithAuthor = SetArtist(keyWords);
+
             int i = 0;
-            int trycoount;
-            foreach (var item in keyWords)
+            foreach (var item in keyPhrasesWithAuthor)
             {
                 i += 1;
-                trycoount = 3;
-            tryagain:
-                try
-                {
-                    var fileResponse = await imageService.GenerateImage(item, video.Id, i);
+                var fileResponse = await imageService.GenerateImage(item, video.Id, i);
 
-                    if (fileResponse is null)
-                        continue;
+                if (fileResponse is null)
+                    continue;
 
-                    var newImage = Image.New(video.Id, fileResponse.FileName, fileResponse.Url);
-                    await imageDbService.Create(newImage);
-                }
-                catch (Exception)
-                {
-                    if (trycoount > 0)
-                    {
-                        trycoount -= 1;
-                        goto tryagain;
-                    }
-
-                    throw;
-                }
-
+                var newImage = Image.New(video.Id, fileResponse.FileName, fileResponse.Url);
+                await imageDbService.Create(newImage);
             }
+        }
+
+        private List<string> SetArtist(List<string> keyPhrases)
+        {
+            var keyPhrasesWithAuthor = new List<string>();
+            foreach (var item in keyPhrases)
+            {
+                var phraseWithAuthor = $"{item} made by {Author.GetRandomAuthor()}";
+                keyPhrasesWithAuthor.Add(phraseWithAuthor);
+            }
+
+            return keyPhrasesWithAuthor;
         }
 
         private async Task<List<string>> TranslateKeyWords(Video video, List<string> keywords)
@@ -175,145 +170,76 @@ namespace Domain.UseCases
 
         private async Task<List<string>> CreateKeyWords(Video video, string text)
         {
-            int tryCounter = 3;
-        tryagain:
-            try
+            var maxKeywords = Convert.ToInt32(configuration.GetSection("MaxKeyWords").Value);
+            var phraseKeyWordsModel = configuration.GetSection("Phrases:Keys").Value!;
+            var keyPhrases = new List<string>();
+
+            int i = 1;
+            List<string> phrases = new();
+            while (text.Contains($"{i}."))
             {
-                var phraseKeyWordsModel = configuration.GetSection("Phrases:Keys").Value!;
-                var phraseKeyWords = phraseKeyWordsModel.Replace("@text", text);
-
-                await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_KEYWORDS);
-                var keyWordsPlainText = await textService.GenerateKeyWords(phraseKeyWords);
-                keyWordsPlainText = keyWordsPlainText.Trim()
-                    .Replace("\"", "")
-                    .Replace("Palavras-chave", "")
-                    .Replace(":", "");
-
-                if (string.IsNullOrEmpty(keyWordsPlainText))
-                    throw new ArgumentException("Invalid text");
-
-                List<string> keywords = new();
-                List<string> formatedKeys = new();
-
-                if (keyWordsPlainText.Contains(","))
-                {
-                    keywords = keyWordsPlainText.Split(",").ToList();
-                    foreach (var item in keywords)
-                    {
-                        var formatedItem = item.Trim();
-                        if (!string.IsNullOrEmpty(formatedItem))
-                            formatedKeys.Add(formatedItem);
-                    }
-                }
-                else if (keyWordsPlainText.Contains("-"))
-                {
-                    keywords = keyWordsPlainText.Split("-").ToList();
-
-                    foreach (var item in keywords)
-                    {
-                        var formatedItem = item.Trim();
-                        if (!string.IsNullOrEmpty(formatedItem))
-                            formatedKeys.Add(formatedItem);
-                    }
-                }
-                else if (keyWordsPlainText.Contains("1."))
-                {
-                    keywords = keyWordsPlainText.Split(".").ToList();
-                    foreach (var item in keywords)
-                    {
-                        var formatedItem = item.Trim()
-                            .Replace("1", "")
-                            .Replace("2", "")
-                            .Replace("3", "")
-                            .Replace("4", "")
-                            .Replace("5", "");
-
-                        if (!string.IsNullOrEmpty(formatedItem))
-                            formatedKeys.Add(formatedItem);
-                    }
-                }
-
-                List<string> normalizedKeyWord = new();
-                foreach (var item in formatedKeys)
-                {
-                    normalizedKeyWord.Add($"{video.Theme} {item}");
-                }
-
-                await videoService.UpdateKeywords(video.Id, string.Join(",", keywords));
-
-                var maxKeywords = Convert.ToInt32(configuration.GetSection("MaxKeyWords").Value);
-                return normalizedKeyWord.Take(maxKeywords).ToList();
+                string phrase = text.Substring(text.IndexOf($"{i}.") + 2);
+                phrase = phrase.Substring(0, phrase.IndexOf(".")).Trim();
+                phrase = phraseKeyWordsModel.Replace("@text", phrase);
+                phrases.Add(phrase);
+                i++;
             }
-            catch (Exception)
+
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_KEYWORDS);
+
+            foreach (var item in phrases)
             {
-                if (tryCounter > 0)
-                {
-                    tryCounter -= 1;
-                    goto tryagain;
-                }
-                throw;
+                var response = await textService.GenerateKeyWords(item);
+                var responseClean = Helper.CleanKeywordResponse(response);
+
+                if (string.IsNullOrEmpty(responseClean))
+                    throw new ArgumentException("Invalid keyword response");
+
+                var splitedKeywords = Helper.SplitKeyword(response);
+                var configuredKeywords = Helper.ConfigureKeywords(splitedKeywords);
+
+                var keyPhrase = $"{video.Theme} {string.Join(",", configuredKeywords)}";
+                keyPhrases.Add(keyPhrase);
             }
+            
+            await videoService.UpdateKeywords(video.Id, string.Join("|", keyPhrases));
+            return keyPhrases;
+
         }
 
         private async Task<string> CreateText(Video video, string title)
         {
-            int tryCounter = 3;
-        tryagain:
-            try
-            {
-                var phraseTextModel = configuration.GetSection("Phrases:Text").Value!;
-                var phraseText = phraseTextModel.Replace("@title", title);
+            var phraseTextModel = configuration.GetSection("Phrases:Text").Value!;
+            var phraseText = phraseTextModel.Replace("@title", title);
 
-                await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_TEXT);
-                var text = await textService.GenerateText(phraseText);
-                text = text.Trim().Replace("\"", "");
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_TEXT);
+            var text = await textService.GenerateText(phraseText);
+            text = text.Trim().Replace("\"", "");
 
-                if (string.IsNullOrEmpty(text))
-                    throw new ArgumentException("Invalid text");
+            if (string.IsNullOrEmpty(text))
+                throw new ArgumentException("Invalid text");
 
-                await videoService.UpdateText(video.Id, text);
+            await videoService.UpdateText(video.Id, text);
 
-                return text;
-            }
-            catch (Exception)
-            {
-                if (tryCounter > 0)
-                {
-                    tryCounter -= 1;
-                    goto tryagain;
-                }
-                throw;
-            }
+            return text;
+
         }
 
         private async Task<string> CreateTitle(Video video)
         {
-            int tryCounter = 3;
-        tryagain:
-            try
-            {
-                var phraseTitleModel = configuration.GetSection("Phrases:Title").Value!;
-                var phraseTitle = phraseTitleModel.Replace("@theme", video.Theme);
+            var phraseTitleModel = configuration.GetSection("Phrases:Title").Value!;
+            var phraseTitle = phraseTitleModel.Replace("@theme", video.Theme);
 
-                await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_TITLE);
-                var title = await textService.GenerateTitle(phraseTitle);
-                title = title.Trim().Replace("\"", "");
+            await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_TITLE);
+            var title = await textService.GenerateTitle(phraseTitle);
+            title = title.Trim().Replace("\"", "");
 
-                if (string.IsNullOrEmpty(title))
-                    throw new ArgumentException("Invalid title");
+            if (string.IsNullOrEmpty(title))
+                throw new ArgumentException("Invalid title");
 
-                await videoService.UpdateTitle(video.Id, title);
-                return title;
-            }
-            catch (Exception)
-            {
-                if (tryCounter > 0)
-                {
-                    tryCounter -= 1;
-                    goto tryagain;
-                }
-                throw;
-            }
+            await videoService.UpdateTitle(video.Id, title);
+            return title;
+
         }
 
         private async Task<Video> GetVideo(StartVideoMakerProcessRequest request)

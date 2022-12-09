@@ -30,7 +30,7 @@ namespace Infra.ExternalServices.Image
         {
             keyWord = keyWord.Replace(".", "").Replace("-", "");
             string base64 = string.Empty;
-            var client = httpClientFactory.CreateClient();
+            var client = httpClientFactory.CreateClient("General");
             var body = GetBody(keyWord);
             var url = configuration.GetSection("StableDiffusion:Url").Value;
             client.Timeout = TimeSpan.FromHours(1);
@@ -53,13 +53,13 @@ namespace Infra.ExternalServices.Image
             }
 
 
-            var urlResponse = await UploadImage(keyWord, base64, videoId, index);
+            var urlResponse = await UploadImage(base64, videoId, index);
             return urlResponse;
         }
 
-        private async Task<FileResponseDto?> UploadImage(string keyword, string base64, int videoId, int index)
+        private async Task<FileResponseDto?> UploadImage(string base64, int videoId, int index)
         {
-            var name = $"image-{videoId}-{index}-{keyword}.png";
+            var name = $"image-{videoId}-{index}.png";
             byte[] bytes = Convert.FromBase64String(base64);
             using var imageStream = new MemoryStream(bytes);
             var urlResponse = await googleCloudStorage.UploadFileAsync(name, imageStream);

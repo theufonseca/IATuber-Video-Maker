@@ -24,7 +24,7 @@ namespace Infra.ExternalServices.Translate
         public async Task<string> GetTranslate(string text)
         {
             string result = string.Empty;
-            var client = httpClientFactory.CreateClient();
+            var client = httpClientFactory.CreateClient("General");
             client.DefaultRequestHeaders.Add("Authorization", $"Basic {configuration.GetSection("IBMTranslate:Token").Value}");
 
             var body = GetBody(text);
