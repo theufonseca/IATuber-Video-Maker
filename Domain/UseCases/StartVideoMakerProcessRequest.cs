@@ -1,4 +1,5 @@
 ﻿using Domain.Aggregates;
+using Domain.Dto;
 using Domain.Enum;
 using Domain.Helpers;
 using Domain.Interfaces;
@@ -61,8 +62,11 @@ namespace Domain.UseCases
                 var text = await CreateText(video, title);
                 var keywords = await CreateKeyWords(video, text);
                 var translatedKeyWords = await TranslateKeyWords(video, keywords);
-                await CreateImages(video, translatedKeyWords);
-                await CreateVoice(video, text);
+                var createImageTask = CreateImages(video, translatedKeyWords);
+                var createVoiceTask = CreateVoice(video, text);
+
+                await Task.WhenAll(createImageTask, createVoiceTask);
+
                 await CreateMusic(video, text);
                 await DownloadFiles(video.Id);
                 await videoService.UpdateStatus(request.VideoId, VIDEO_STATUS.READY_TO_EDIT);
@@ -117,18 +121,32 @@ namespace Domain.UseCases
 
         private async Task CreateImages(Video video, List<string> keyWords)
         {
+            var imagesPerKeyWord = Convert.ToInt32(configuration.GetSection("ImgPerKeyWord").Value);
             await videoService.UpdateStatus(video.Id, VIDEO_STATUS.CREATING_IMAGES);
             var keyPhrasesWithAuthor = SetArtist(keyWords);
 
+            List<Task<FileResponseDto?>> responses = new();
             int i = 0;
             foreach (var item in keyPhrasesWithAuthor)
             {
                 i += 1;
-                var fileResponse = await imageService.GenerateImage(item, video.Id, i);
 
-                if (fileResponse is null)
+                while(imagesPerKeyWord > 0)
+                {
+                    var fileResponse = imageService.GenerateImage(item, video.Id, i);
+                    responses.Add(fileResponse);
+                    imagesPerKeyWord -= 1;
+                }
+            }
+
+            await Task.WhenAll(responses);
+
+            foreach (var item in responses)
+            {
+                if (item.Result is null)
                     continue;
 
+                var fileResponse = item.Result;
                 var newImage = Image.New(video.Id, fileResponse.FileName, fileResponse.Url);
                 await imageDbService.Create(newImage);
             }
